@@ -1,0 +1,1135 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מכרזי רמ"י - מערכת עדכון אוטומטי</title>
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --navy: #0f2744;
+            --blue: #1a4a8a;
+            --blue-mid: #2563b0;
+            --blue-light: #3b82f6;
+            --gold: #c8960c;
+            --gold-light: #f0c94d;
+            --gold-pale: #fef9e7;
+            --bg: #f0f4f9;
+            --white: #ffffff;
+            --text: #1e293b;
+            --text-muted: #64748b;
+            --border: #dde3ed;
+            --green: #047857;
+            --green-light: #d1fae5;
+            --red: #b91c1c;
+            --red-light: #fee2e2;
+            --orange: #c2410c;
+            --orange-light: #ffedd5;
+            --shadow: 0 2px 12px rgba(15,39,68,0.08);
+            --shadow-lg: 0 8px 32px rgba(15,39,68,0.14);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Heebo', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* ===== HEADER ===== */
+        .header {
+            background: var(--navy);
+            padding: 0 32px;
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 200;
+            box-shadow: 0 2px 16px rgba(0,0,0,0.25);
+        }
+
+        .header-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header-logo {
+            width: 36px;
+            height: 36px;
+            background: var(--gold);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            font-size: 16px;
+            color: var(--navy);
+            flex-shrink: 0;
+        }
+
+        .header-title {
+            color: white;
+            font-size: 1.15rem;
+            font-weight: 700;
+        }
+
+        .header-title span { color: var(--gold-light); }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* ===== BUTTONS ===== */
+        .btn {
+            padding: 9px 18px;
+            border: none;
+            border-radius: 8px;
+            font-family: 'Heebo', sans-serif;
+            font-size: 0.88rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.18s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+        .btn:active { transform: scale(0.97); }
+
+        .btn-gold { background: var(--gold); color: var(--navy); }
+        .btn-gold:hover { background: #daa520; }
+
+        .btn-navy { background: var(--navy); color: white; border: 1px solid #2a3f5f; }
+        .btn-navy:hover { background: #162d52; }
+
+        .btn-outline { background: transparent; color: white; border: 1px solid rgba(255,255,255,0.3); }
+        .btn-outline:hover { background: rgba(255,255,255,0.1); }
+
+        .btn-green { background: var(--green); color: white; }
+        .btn-green:hover { background: #065f46; }
+
+        .btn-blue { background: var(--blue-mid); color: white; }
+        .btn-blue:hover { background: #1d4ed8; }
+
+        .btn-sm { padding: 6px 12px; font-size: 0.82rem; }
+
+        /* ===== MAIN LAYOUT ===== */
+        .page {
+            max-width: 1500px;
+            margin: 0 auto;
+            padding: 24px 20px;
+        }
+
+        /* ===== TOP ROW ===== */
+        .top-row {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 20px;
+            align-items: stretch;
+        }
+
+        /* ===== API PANEL ===== */
+        .api-panel {
+            background: white;
+            border-radius: 14px;
+            border: 2px solid var(--blue-light);
+            padding: 20px 24px;
+            flex: 1;
+            box-shadow: var(--shadow);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .api-panel::before {
+            content: '';
+            position: absolute;
+            top: 0; right: 0;
+            width: 120px; height: 120px;
+            background: radial-gradient(circle at top right, rgba(59,130,246,0.08), transparent 70%);
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .panel-icon {
+            width: 34px;
+            height: 34px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .panel-icon.auto { background: #dbeafe; }
+        .panel-icon.manual { background: #f0fdf4; }
+
+        .panel-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--navy);
+        }
+
+        .panel-sub {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .api-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .api-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            padding: 6px 12px;
+            background: var(--bg);
+            border-radius: 6px;
+            flex: 1;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .dot-idle { background: #d1d5db; }
+        .dot-loading { background: var(--gold); animation: blink 0.8s infinite; }
+        .dot-ok { background: #10b981; }
+        .dot-err { background: var(--red); }
+
+        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+        /* ===== MANUAL PANEL ===== */
+        .manual-panel {
+            background: white;
+            border-radius: 14px;
+            border: 2px solid #d1fae5;
+            padding: 20px 24px;
+            flex: 1;
+            box-shadow: var(--shadow);
+        }
+
+        .paste-row {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+
+        textarea.paste-box {
+            flex: 1;
+            height: 72px;
+            padding: 10px 14px;
+            border: 1.5px solid var(--border);
+            border-radius: 8px;
+            font-family: 'Heebo', sans-serif;
+            font-size: 0.85rem;
+            resize: vertical;
+            outline: none;
+            background: var(--bg);
+            transition: border-color 0.2s;
+        }
+        textarea.paste-box:focus { border-color: var(--blue-light); background: white; }
+
+        /* ===== STATS ===== */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .stat {
+            background: white;
+            border-radius: 12px;
+            padding: 16px 18px;
+            box-shadow: var(--shadow);
+            border-top: 3px solid var(--blue-light);
+        }
+        .stat.s-gold { border-top-color: var(--gold); }
+        .stat.s-green { border-top-color: var(--green); }
+        .stat.s-orange { border-top-color: var(--orange); }
+        .stat.s-red { border-top-color: var(--red); }
+        .stat.s-navy { border-top-color: var(--navy); }
+
+        .stat-label { font-size: 0.76rem; color: var(--text-muted); font-weight: 600; margin-bottom: 4px; }
+        .stat-val { font-size: 1.8rem; font-weight: 800; color: var(--text); line-height: 1; }
+        .stat-sub { font-size: 0.73rem; color: var(--text-muted); margin-top: 3px; }
+
+        /* ===== FILTERS ===== */
+        .filters {
+            background: white;
+            border-radius: 12px;
+            padding: 14px 20px;
+            margin-bottom: 16px;
+            box-shadow: var(--shadow);
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .f-label {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--text-muted);
+        }
+
+        .f-select, .f-input {
+            padding: 7px 11px;
+            border: 1.5px solid var(--border);
+            border-radius: 7px;
+            font-family: 'Heebo', sans-serif;
+            font-size: 0.86rem;
+            background: var(--bg);
+            color: var(--text);
+            outline: none;
+        }
+        .f-select:focus, .f-input:focus { border-color: var(--blue-light); background: white; }
+
+        .filter-sep {
+            width: 1px;
+            height: 24px;
+            background: var(--border);
+        }
+
+        /* ===== TABS ===== */
+        .tabs-wrap {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .tabs {
+            display: flex;
+            background: white;
+            border-radius: 10px;
+            padding: 4px;
+            gap: 2px;
+            box-shadow: var(--shadow);
+        }
+
+        .tab {
+            padding: 7px 20px;
+            border-radius: 7px;
+            border: none;
+            background: none;
+            font-family: 'Heebo', sans-serif;
+            font-size: 0.88rem;
+            font-weight: 600;
+            cursor: pointer;
+            color: var(--text-muted);
+            transition: all 0.18s;
+        }
+        .tab.active { background: var(--navy); color: white; }
+
+        /* ===== TABLE ===== */
+        .table-wrap {
+            background: white;
+            border-radius: 14px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+        }
+
+        .table-top {
+            padding: 14px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+            background: #f8fafc;
+        }
+
+        .table-top-title {
+            font-size: 0.92rem;
+            font-weight: 700;
+            color: var(--navy);
+        }
+
+        .scroll-x { overflow-x: auto; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+        }
+
+        thead th {
+            background: #f1f5f9;
+            padding: 11px 14px;
+            text-align: right;
+            font-size: 0.77rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+            border-bottom: 2px solid var(--border);
+            white-space: nowrap;
+            cursor: pointer;
+            user-select: none;
+        }
+        thead th:hover { background: #e8edf5; color: var(--navy); }
+        thead th .sort-icon { opacity: 0.4; font-size: 0.7rem; }
+        thead th.sorted .sort-icon { opacity: 1; color: var(--blue-light); }
+
+        tbody tr { border-bottom: 1px solid #f1f5f9; transition: background 0.12s; }
+        tbody tr:hover { background: #f8fafc; }
+        tbody tr:last-child { border-bottom: none; }
+        tbody tr.urgent { background: var(--orange-light); }
+        tbody tr.urgent:hover { background: #fed7aa; }
+        tbody tr.today-row { background: var(--red-light); }
+        tbody tr.today-row:hover { background: #fecaca; }
+
+        td {
+            padding: 12px 14px;
+            vertical-align: middle;
+        }
+
+        /* ===== BADGES ===== */
+        .badge {
+            display: inline-block;
+            padding: 2px 9px;
+            border-radius: 5px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+        .b-green { background: var(--green-light); color: #065f46; }
+        .b-orange { background: var(--orange-light); color: #9a3412; }
+        .b-red { background: var(--red-light); color: #991b1b; }
+        .b-blue { background: #dbeafe; color: #1e40af; }
+        .b-gray { background: #f3f4f6; color: #6b7280; }
+        .b-navy { background: #e0e7ff; color: #3730a3; }
+
+        .michraz-link {
+            color: var(--blue-mid);
+            font-weight: 700;
+            text-decoration: none;
+            font-size: 0.92rem;
+        }
+        .michraz-link:hover { color: var(--blue-light); text-decoration: underline; }
+
+        /* ===== EMPTY / LOADING ===== */
+        .center-msg {
+            text-align: center;
+            padding: 64px 20px;
+            color: var(--text-muted);
+        }
+        .center-msg .big-icon { font-size: 3.5rem; margin-bottom: 14px; }
+        .center-msg h3 { font-size: 1.1rem; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+        .center-msg p { font-size: 0.88rem; line-height: 1.7; }
+
+        .spinner-wrap { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 64px; color: var(--text-muted); }
+        .spinner { width: 38px; height: 38px; border: 3px solid var(--border); border-top-color: var(--blue-light); border-radius: 50%; animation: spin 0.75s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ===== TOAST ===== */
+        .toast-container { position: fixed; bottom: 24px; left: 24px; z-index: 999; display: flex; flex-direction: column; gap: 8px; }
+        .toast {
+            background: var(--navy);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            box-shadow: var(--shadow-lg);
+            animation: slideIn 0.3s ease-out;
+            max-width: 340px;
+        }
+        .toast.success { background: var(--green); }
+        .toast.error { background: var(--red); }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 1100px) {
+            .stats-row { grid-template-columns: repeat(3, 1fr); }
+        }
+        @media (max-width: 750px) {
+            .top-row { flex-direction: column; }
+            .stats-row { grid-template-columns: repeat(2, 1fr); }
+            .header { padding: 0 16px; }
+            .page { padding: 16px 12px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+    <div class="header-brand">
+        <div class="header-logo">מ</div>
+        <div class="header-title">מכרזי <span>רמ"י</span> — מעקב אוטומטי</div>
+    </div>
+    <div class="header-right">
+        <a href="https://apps.land.gov.il/MichrazimSite/#/homePage" target="_blank" class="btn btn-outline">🌐 אתר רמ"י</a>
+        <button class="btn btn-gold" onclick="exportExcel()">⬇️ ייצוא לאקסל</button>
+    </div>
+</header>
+
+<div class="page">
+
+    <!-- TOP ROW: AUTO + MANUAL -->
+    <div class="top-row">
+
+        <!-- AUTO FETCH -->
+        <div class="api-panel">
+            <div class="panel-header">
+                <div class="panel-icon auto">🤖</div>
+                <div>
+                    <div class="panel-title">עדכון אוטומטי מה-API</div>
+                    <div class="panel-sub">שולף ישירות מאתר רמ"י ללא העתקה</div>
+                </div>
+            </div>
+            <div class="api-controls">
+                <div class="api-status">
+                    <div class="dot dot-idle" id="apiDot"></div>
+                    <span id="apiStatusText">לא עודכן עדיין</span>
+                </div>
+                <button class="btn btn-blue" onclick="fetchFromAPI()" id="fetchBtn">
+                    🔄 שלוף עכשיו
+                </button>
+                <button class="btn btn-sm" style="background:#f1f5f9;color:var(--text-muted)" onclick="toggleAutoRefresh()" id="autoBtn">
+                    ⏱️ עדכון אוטו: כבוי
+                </button>
+            </div>
+            <div style="margin-top: 10px; font-size: 0.78rem; color: var(--text-muted);">
+                ⚠️ אם מופיע שגיאת CORS — לחץ <strong>עדכון ידני</strong> מטה. ה-API עובד רק מדפדפן עם הרשאה.
+            </div>
+        </div>
+
+        <!-- MANUAL PASTE -->
+        <div class="manual-panel">
+            <div class="panel-header">
+                <div class="panel-icon manual">📋</div>
+                <div>
+                    <div class="panel-title">עדכון ידני — הדבקה</div>
+                    <div class="panel-sub">העתק מהאתר, הדבק כאן ולחץ עדכן</div>
+                </div>
+            </div>
+            <div class="paste-row">
+                <textarea class="paste-box" id="pasteBox" 
+                    placeholder="העתק את הטבלה מאתר רמ&quot;י (Ctrl+A בטבלה → Ctrl+C) והדבק כאן..."></textarea>
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                    <button class="btn btn-green" onclick="processPaste()">✓ עדכן</button>
+                    <button class="btn btn-sm" style="background:#f1f5f9;color:var(--text-muted)" onclick="loadDemo()">🎭 הדגמה</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- STATS -->
+    <div class="stats-row">
+        <div class="stat">
+            <div class="stat-label">מכרזים פעילים</div>
+            <div class="stat-val" id="sTotal">—</div>
+            <div class="stat-sub">בסה"כ</div>
+        </div>
+        <div class="stat s-gold">
+            <div class="stat-label">יחידות דיור</div>
+            <div class="stat-val" id="sUnits">—</div>
+            <div class="stat-sub">סה"כ יח"ד</div>
+        </div>
+        <div class="stat s-red">
+            <div class="stat-label">פגים השבוע</div>
+            <div class="stat-val" id="sUrgent">—</div>
+            <div class="stat-sub">עד 7 ימים</div>
+        </div>
+        <div class="stat s-orange">
+            <div class="stat-label">פגים החודש</div>
+            <div class="stat-val" id="sMonth">—</div>
+            <div class="stat-sub">עד 30 ימים</div>
+        </div>
+        <div class="stat s-green">
+            <div class="stat-label">יש חוברת</div>
+            <div class="stat-val" id="sBooklet">—</div>
+            <div class="stat-sub">מכרזים</div>
+        </div>
+        <div class="stat s-navy">
+            <div class="stat-label">עודכן</div>
+            <div class="stat-val" style="font-size:1rem" id="sUpdated">—</div>
+            <div class="stat-sub">עדכון אחרון</div>
+        </div>
+    </div>
+
+    <!-- FILTERS -->
+    <div class="filters">
+        <span class="f-label">סינון:</span>
+        <select class="f-select" id="fCity" onchange="applyFilters()">
+            <option value="">כל הערים</option>
+        </select>
+        <select class="f-select" id="fBooklet" onchange="applyFilters()">
+            <option value="">חוברת: הכל</option>
+            <option value="yes">✓ יש חוברת</option>
+            <option value="no">✗ אין חוברת</option>
+        </select>
+        <select class="f-select" id="fUrgency" onchange="applyFilters()">
+            <option value="">כל המועדים</option>
+            <option value="week">פגים השבוע</option>
+            <option value="month">פגים החודש</option>
+        </select>
+        <div class="filter-sep"></div>
+        <span class="f-label">מינ' יח"ד:</span>
+        <input type="number" class="f-input" id="fMinUnits" placeholder="0" style="width:72px" onchange="applyFilters()">
+        <div class="filter-sep"></div>
+        <input type="text" class="f-input" id="fSearch" placeholder="🔍 חיפוש מספר / עיר..." style="width:210px" oninput="applyFilters()">
+        <button class="btn btn-sm" style="background:#f1f5f9;color:var(--text-muted)" onclick="clearFilters()">✕</button>
+    </div>
+
+    <!-- TABS + TABLE -->
+    <div class="tabs-wrap">
+        <div class="tabs">
+            <button class="tab active" onclick="setTab('active',this)">📋 מכרזים פעילים</button>
+            <button class="tab" onclick="setTab('closed',this)">📁 מכרזים שנסגרו</button>
+            <button class="tab" onclick="setTab('all',this)">📊 הכל</button>
+        </div>
+        <div style="font-size:0.82rem;color:var(--text-muted)" id="rowCount"></div>
+    </div>
+
+    <div class="table-wrap">
+        <div class="table-top">
+            <span class="table-top-title" id="tableTitle">טוען...</span>
+            <button class="btn btn-gold btn-sm" onclick="exportExcel()">⬇️ ייצוא לאקסל</button>
+        </div>
+        <div class="scroll-x">
+            <div id="tableBody">
+                <div class="center-msg">
+                    <div class="big-icon">📋</div>
+                    <h3>אין נתונים עדיין</h3>
+                    <p>לחץ <strong>שלוף עכשיו</strong> לעדכון אוטומטי מה-API,<br>
+                    או <strong>הדבק</strong> נתונים שהעתקת מאתר רמ"י.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- TOASTS -->
+<div class="toast-container" id="toasts"></div>
+
+<script>
+// =========================================================
+// STATE
+// =========================================================
+let allData = [];
+let currentTab = 'active';
+let sortCol = 'deadline';
+let sortAsc = true;
+let autoInterval = null;
+const today = new Date(); today.setHours(0,0,0,0);
+
+// =========================================================
+// API FETCH — רמ"י ישיר
+// =========================================================
+async function fetchFromAPI() {
+    const btn = document.getElementById('fetchBtn');
+    btn.disabled = true;
+    btn.textContent = '⏳ שולף...';
+    setApiStatus('loading', 'מתחבר ל-API של רמ"י...');
+
+    try {
+        // Primary endpoint
+        const url = 'https://apps.land.gov.il/MichrazimSite/api/Michraz/GetActiveMichrazim';
+        const res = await fetch(url, {
+            headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+            mode: 'cors'
+        });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+        const parsed = parseAPIResponse(json);
+
+        if (parsed.length > 0) {
+            allData = parsed;
+            finishLoad(`עודכנו ${parsed.length} מכרזים מה-API`);
+            return;
+        }
+        throw new Error('תגובה ריקה');
+
+    } catch(e) {
+        // Try alternative endpoint
+        try {
+            const url2 = 'https://apps.land.gov.il/MichrazimSite/api/michraz';
+            const res2 = await fetch(url2, { mode: 'cors' });
+            if (!res2.ok) throw new Error(`HTTP ${res2.status}`);
+            const json2 = await res2.json();
+            const parsed2 = parseAPIResponse(json2);
+            if (parsed2.length > 0) {
+                allData = parsed2;
+                finishLoad(`עודכנו ${parsed2.length} מכרזים מה-API`);
+                return;
+            }
+        } catch(e2) {}
+
+        // CORS block — guide user
+        setApiStatus('err', 'שגיאת CORS — השתמש בעדכון ידני');
+        toast('שגיאת CORS: האתר חוסם גישה ישירה. השתמש בעדכון ידני (הדבקה).');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '🔄 שלוף עכשיו';
+    }
+}
+
+function parseAPIResponse(json) {
+    const arr = Array.isArray(json) ? json :
+        json.data || json.items || json.michrazim || json.result || json.Results || [];
+
+    return arr.map(m => ({
+        deadline: formatAPIDate(m.taarich_siyum || m.moedAcharon || m.closingDate || m.deadlineDate || m.taarichSiyum || ''),
+        purpose: m.yaud || m.purpose || m.teurYaud || 'מגורים- פומבי רגיל',
+        id: String(m.mispar_michraz || m.michrazNum || m.id || m.misparMichraz || ''),
+        units: parseInt(m.mispar_yechidot || m.units || m.yechidotDiyur || m.numUnits || 0) || 0,
+        commerce: m.shetach_mishar || m.commerce || m.mishar || '',
+        location: m.shem_yishuv || m.location || m.city || m.yishuv || m.shimYishuv || '',
+        numAreas: m.mispar_mitchamim || m.numAreas || m.mitchamim || '',
+        unitsPerArea: m.yechidot_bemitcham || m.unitsPerArea || m.yechidotBemitcham || '',
+        minPrice: m.mechir_minimalim || m.minPrice || m.mechirMinimali || '',
+        devPrice: m.mechir_pitua || m.devPrice || m.mechirPitua || '',
+        notes: m.hearot || m.notes || ''
+    })).filter(m => m.id);
+}
+
+function formatAPIDate(val) {
+    if (!val) return '';
+    if (typeof val === 'string' && val.includes('/')) return val;
+    // ISO or ticks
+    const d = new Date(val.includes('/Date(') ? parseInt(val.replace(/\/Date\((\d+)\)\//, '$1')) : val);
+    if (isNaN(d)) return val;
+    return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+}
+
+// =========================================================
+// MANUAL PASTE
+// =========================================================
+function processPaste() {
+    const text = document.getElementById('pasteBox').value.trim();
+    if (!text) { toast('אנא הדבק נתונים מאתר רמ"י'); return; }
+    try {
+        const json = JSON.parse(text);
+        const p = parseAPIResponse(json);
+        if (p.length > 0) { allData = p; finishLoad(`עודכנו ${p.length} מכרזים`); document.getElementById('pasteBox').value = ''; return; }
+    } catch(e) {}
+    const cardParsed = parseCardFormat(text);
+    if (cardParsed.length > 0) {
+        allData = cardParsed;
+        finishLoad(`עודכנו ${cardParsed.length} מכרזים מאתר רמ"י`);
+        document.getElementById('pasteBox').value = '';
+        return;
+    }
+    const parsed = parseTabText(text);
+    if (parsed.length > 0) {
+        allData = parsed;
+        finishLoad(`עודכנו ${parsed.length} מכרזים (הדבקה ידנית)`);
+        document.getElementById('pasteBox').value = '';
+    } else {
+        toast('לא הצלחתי לזהות את הפורמט. נסה לסמן מחדש ולהעתיק שוב.', 'error');
+    }
+}
+
+function parseCardFormat(text) {
+    const results = [];
+    const blocks = text.split(/(?=\d{1,4}\/\d{4}\s)/);
+    for (const block of blocks) {
+        const lines = block.split('
+').map(l => l.trim()).filter(Boolean);
+        if (!lines.length) continue;
+        const firstLine = lines[0];
+        const idMatch = firstLine.match(/^(\d{1,4}\/\d{4})/);
+        if (!idMatch) continue;
+        const id = idMatch[1];
+        const unitsMatch = firstLine.match(/(\d+)\s*יח/);
+        const units = unitsMatch ? parseInt(unitsMatch[1]) : 0;
+        const purpose = firstLine.includes('פומבי') ? 'מגורים- פומבי רגיל' : 'מגורים';
+        let location = '', deadline = '', notes = '';
+        for (const line of lines) {
+            if (line.startsWith('יישוב:')) location = line.replace('יישוב:', '').trim().split(',')[0].trim();
+            if (line.startsWith('מועד אחרון')) {
+                const dm = line.match(/(\d{2}\/\d{2}\/\d{4})/);
+                if (dm) deadline = dm[1];
+            }
+            if (line.includes('פורסמה חוברת')) notes = 'יש חוברת';
+            if (line.includes('לא פורסמה') || line.includes('לא פרסמו')) notes = 'לא פרסמו חוברת מכרז';
+        }
+        if (!notes) notes = 'לא פרסמו חוברת מכרז';
+        if (id && deadline) results.push({ deadline, purpose, id, units, commerce: '', location, numAreas: '', unitsPerArea: '', minPrice: '', devPrice: '', notes });
+    }
+    return results;
+}
+
+function parseTabText(text) {
+    const lines = text.split('\n').filter(l => l.trim());
+    const dateRx = /^\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}/;
+    return lines
+        .filter(l => {
+            const p = l.split('\t')[0].trim();
+            return dateRx.test(p) || /^\d{2}\/\d{2}\/\d{4}/.test(p);
+        })
+        .map(l => {
+            const p = l.split('\t').map(s => s.trim());
+            return {
+                deadline: p[0] || '',
+                purpose: p[1] || '',
+                id: p[2] || '',
+                units: parseInt(p[3]) || 0,
+                commerce: p[4] || '',
+                location: p[5] || '',
+                numAreas: p[6] || '',
+                unitsPerArea: p[7] || '',
+                minPrice: p[8] ? parseInt(p[8].replace(/[,\s]/g,'')) || '' : '',
+                devPrice: p[9] ? parseInt(p[9].replace(/[,\s]/g,'')) || '' : '',
+                notes: p[10] || ''
+            };
+        })
+        .filter(r => r.id);
+}
+
+// =========================================================
+// DEMO DATA
+// =========================================================
+function loadDemo() {
+    allData = [
+        { deadline: '08/09/2025', purpose: 'מגורים- פומבי רגיל', id: '103/2025', units: 48, commerce: '', location: 'מודיעין', numAreas: 2, unitsPerArea: '18-30', minPrice: 2853196, devPrice: 6132735, notes: 'יש חוברת' },
+        { deadline: '15/12/2025', purpose: 'מגורים- פומבי רגיל', id: '213/2025', units: 1116, commerce: 'לא בכל המגרשים', location: 'אשקלון', numAreas: 14, unitsPerArea: '62-90', minPrice: 917357, devPrice: 13796241, notes: 'יש חוברת' },
+        { deadline: '22/12/2025', purpose: 'מגורים- פומבי רגיל', id: '82/2025', units: 328, commerce: '', location: 'אזור', numAreas: '', unitsPerArea: '', minPrice: '', devPrice: '', notes: 'לא פרסמו חוברת מכרז' },
+        { deadline: '22/12/2025', purpose: 'מגורים- פומבי רגיל', id: '52/2022', units: 120, commerce: '', location: 'ראשון לציון', numAreas: '', unitsPerArea: '', minPrice: '', devPrice: '', notes: 'לא פרסמו חוברת מכרז' },
+        { deadline: '22/12/2025', purpose: 'מגורים- פומבי רגיל', id: '324/2021', units: 2829, commerce: '', location: 'אשקלון', numAreas: '', unitsPerArea: '', minPrice: '', devPrice: '', notes: 'לא פרסמו חוברת מכרז' },
+        { deadline: '24/12/2025', purpose: 'מגורים- פומבי רגיל', id: '296/2025', units: 924, commerce: 'כן', location: 'באר יעקב', numAreas: 7, unitsPerArea: '84-154', minPrice: 8183495, devPrice: 16228644, notes: 'יש חוברת' },
+        { deadline: '28/12/2025', purpose: 'מגורים- פומבי רגיל', id: '79/2025', units: 139, commerce: '', location: 'באר יעקב', numAreas: '', unitsPerArea: '', minPrice: '', devPrice: '', notes: 'לא פרסמו חוברת מכרז' },
+        { deadline: '29/12/2025', purpose: 'מגורים- פומבי רגיל', id: '18/2025', units: 68, commerce: '', location: 'קרית אונו', numAreas: '', unitsPerArea: '', minPrice: '', devPrice: '', notes: 'לא פרסמו חוברת מכרז' },
+        { deadline: '29/12/2025', purpose: 'מגורים- פומבי רגיל', id: '120/2024', units: 182, commerce: '', location: 'רחובות', numAreas: '', unitsPerArea: '', minPrice: '', devPrice: '', notes: 'לא פרסמו חוברת מכרז' },
+        { deadline: '29/12/2025', purpose: 'מגורים- פומבי רגיל', id: '447/2025', units: 136, commerce: '', location: 'יבנה', numAreas: 1, unitsPerArea: '136', minPrice: 6029150, devPrice: 34626017, notes: 'יש חוברת' },
+        { deadline: '31/12/2025', purpose: 'מגורים- פומבי רגיל', id: '190/2024', units: 1200, commerce: '', location: 'רמת-גן- מחנה גנים', numAreas: '', unitsPerArea: '', minPrice: '', devPrice: '', notes: 'לא פרסמו חוברת מכרז' },
+        { deadline: '31/12/2025', purpose: 'מגורים- פומבי רגיל', id: '211/2024', units: 277, commerce: '', location: 'אשקלון', numAreas: 2, unitsPerArea: '150-127', minPrice: 4876093, devPrice: 33249988, notes: 'יש חוברת' },
+        { deadline: '26/01/2026', purpose: 'מגורים- פומבי רגיל', id: '444/2019', units: 48, commerce: '', location: 'קרית גת', numAreas: 1, unitsPerArea: '48', minPrice: 6110034, devPrice: 16956092, notes: 'יש חוברת' },
+        { deadline: '26/01/2026', purpose: 'מגורים- פומבי רגיל', id: '432/2024', units: 300, commerce: '', location: 'לוד', numAreas: '', unitsPerArea: '', minPrice: '', devPrice: '', notes: 'לא פרסמו חוברת מכרז' },
+        { deadline: '26/01/2026', purpose: 'מגורים- פומבי רגיל', id: '36/2024', units: 557, commerce: '', location: 'לוד', numAreas: '', unitsPerArea: '', minPrice: '', devPrice: '', notes: 'לא פרסמו חוברת מכרז' },
+        { deadline: '30/03/2026', purpose: 'מגורים- פומבי רגיל', id: '172/2024', units: 1000, commerce: '', location: 'גן יבנה', numAreas: '', unitsPerArea: '', minPrice: '', devPrice: '', notes: 'לא פרסמו חוברת מכרז' },
+    ];
+    finishLoad('נטענו נתוני הדגמה (4 דצמבר 2025)', true);
+}
+
+// =========================================================
+// FINISH LOAD
+// =========================================================
+function finishLoad(msg, isDemo = false) {
+    updateStats();
+    updateCityFilter();
+    applyFilters();
+    const now = new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+    document.getElementById('sUpdated').textContent = now;
+    if (!isDemo) {
+        setApiStatus('ok', msg);
+        toast(msg, 'success');
+    } else {
+        toast(msg);
+    }
+}
+
+// =========================================================
+// STATS
+// =========================================================
+function updateStats() {
+    const active = allData.filter(isActive);
+    const totalUnits = active.reduce((s, r) => s + (parseInt(r.units) || 0), 0);
+
+    const urgentCount = active.filter(r => {
+        const d = daysLeft(r.deadline);
+        return d !== null && d >= 0 && d <= 7;
+    }).length;
+
+    const monthCount = active.filter(r => {
+        const d = daysLeft(r.deadline);
+        return d !== null && d >= 0 && d <= 30;
+    }).length;
+
+    const bookletCount = active.filter(r => r.notes && r.notes.includes('יש חוברת')).length;
+
+    document.getElementById('sTotal').textContent = active.length;
+    document.getElementById('sUnits').textContent = totalUnits.toLocaleString('he-IL');
+    document.getElementById('sUrgent').textContent = urgentCount;
+    document.getElementById('sMonth').textContent = monthCount;
+    document.getElementById('sBooklet').textContent = bookletCount;
+}
+
+function updateCityFilter() {
+    const cities = [...new Set(allData.map(r => r.location).filter(Boolean))].sort();
+    const sel = document.getElementById('fCity');
+    const val = sel.value;
+    sel.innerHTML = '<option value="">כל הערים</option>';
+    cities.forEach(c => {
+        const o = document.createElement('option');
+        o.value = c; o.textContent = c;
+        if (c === val) o.selected = true;
+        sel.appendChild(o);
+    });
+}
+
+// =========================================================
+// FILTERS + TABLE
+// =========================================================
+function applyFilters() {
+    const city    = document.getElementById('fCity').value;
+    const booklet = document.getElementById('fBooklet').value;
+    const urgency = document.getElementById('fUrgency').value;
+    const minU    = parseInt(document.getElementById('fMinUnits').value) || 0;
+    const search  = document.getElementById('fSearch').value.toLowerCase().trim();
+
+    let rows = allData.filter(r => {
+        const active = isActive(r);
+        if (currentTab === 'active' && !active) return false;
+        if (currentTab === 'closed' && active) return false;
+
+        if (city && r.location !== city) return false;
+        if (booklet === 'yes' && !(r.notes && r.notes.includes('יש חוברת'))) return false;
+        if (booklet === 'no'  &&  (r.notes && r.notes.includes('יש חוברת'))) return false;
+        if (minU && (parseInt(r.units) || 0) < minU) return false;
+
+        if (urgency === 'week') {
+            const d = daysLeft(r.deadline);
+            if (d === null || d < 0 || d > 7) return false;
+        }
+        if (urgency === 'month') {
+            const d = daysLeft(r.deadline);
+            if (d === null || d < 0 || d > 30) return false;
+        }
+
+        if (search) {
+            const combined = (r.id + r.location + r.purpose + r.notes).toLowerCase();
+            if (!combined.includes(search)) return false;
+        }
+
+        return true;
+    });
+
+    // Sort
+    rows.sort((a, b) => {
+        let va, vb;
+        if (sortCol === 'deadline') { va = parseDate(a.deadline); vb = parseDate(b.deadline); }
+        else if (sortCol === 'units') { va = parseInt(a.units)||0; vb = parseInt(b.units)||0; }
+        else if (sortCol === 'location') { va = a.location||''; vb = b.location||''; }
+        else if (sortCol === 'id') { va = a.id||''; vb = b.id||''; }
+        else { va = a[sortCol]||''; vb = b[sortCol]||''; }
+        if (va < vb) return sortAsc ? -1 : 1;
+        if (va > vb) return sortAsc ?  1 : -1;
+        return 0;
+    });
+
+    const label = currentTab === 'active' ? 'מכרזים פעילים' : currentTab === 'closed' ? 'מכרזים שנסגרו' : 'כל המכרזים';
+    document.getElementById('tableTitle').textContent = `${label} (${rows.length})`;
+    document.getElementById('rowCount').textContent = `מציג ${rows.length} מתוך ${allData.length}`;
+
+    renderTable(rows);
+}
+
+function renderTable(rows) {
+    const wrap = document.getElementById('tableBody');
+
+    if (rows.length === 0) {
+        wrap.innerHTML = `
+            <div class="center-msg">
+                <div class="big-icon">🔍</div>
+                <h3>לא נמצאו מכרזים</h3>
+                <p>נסה לשנות את הסינון</p>
+            </div>`;
+        return;
+    }
+
+    const cols = [
+        { key: 'deadline', label: 'מועד סיום' },
+        { key: 'id', label: 'מספר מכרז' },
+        { key: 'location', label: 'מיקום' },
+        { key: 'units', label: 'יח"ד' },
+        { key: 'commerce', label: 'מסחר/תעסוקה' },
+        { key: 'numAreas', label: 'מתחמים' },
+        { key: 'unitsPerArea', label: 'יח\' במתחם' },
+        { key: 'minPrice', label: 'מחיר מינימום' },
+        { key: 'devPrice', label: 'מחיר פיתוח' },
+        { key: 'notes', label: 'חוברת' },
+    ];
+
+    const ths = cols.map(c => {
+        const active = sortCol === c.key ? 'sorted' : '';
+        const icon = sortCol === c.key ? (sortAsc ? '▲' : '▼') : '⇅';
+        return `<th class="${active}" onclick="setSort('${c.key}')">${c.label} <span class="sort-icon">${icon}</span></th>`;
+    }).join('');
+
+    const trs = rows.map(r => {
+        const dl = daysLeft(r.deadline);
+        const rowClass = dl !== null && dl === 0 ? 'today-row' : (dl !== null && dl >= 0 && dl <= 7 ? 'urgent' : '');
+
+        let dlBadge = '';
+        if (dl !== null) {
+            if (dl < 0)        dlBadge = `<span class="badge b-red">נסגר</span>`;
+            else if (dl === 0) dlBadge = `<span class="badge b-red">🔴 היום!</span>`;
+            else if (dl <= 3)  dlBadge = `<span class="badge b-red">${dl}ד'</span>`;
+            else if (dl <= 7)  dlBadge = `<span class="badge b-orange">${dl}ד'</span>`;
+            else if (dl <= 30) dlBadge = `<span class="badge b-blue">${dl}ד'</span>`;
+        }
+
+        const hasBooklet = r.notes && r.notes.includes('יש חוברת');
+        const bookletCell = hasBooklet
+            ? `<span class="badge b-green">✓ חוברת</span>`
+            : `<span class="badge b-gray">אין</span>`;
+
+        const minPr = r.minPrice ? Number(r.minPrice).toLocaleString('he-IL') + '₪' : '—';
+        const devPr = r.devPrice ? Number(r.devPrice).toLocaleString('he-IL') + '₪' : '—';
+
+        const michrazUrl = `https://apps.land.gov.il/MichrazimSite/#/michraz/${r.id.replace('/','')}`;
+
+        return `<tr class="${rowClass}">
+            <td>
+                <div style="font-weight:600;font-size:0.9rem">${r.deadline}</div>
+                ${dlBadge ? `<div style="margin-top:3px">${dlBadge}</div>` : ''}
+            </td>
+            <td><a href="${michrazUrl}" target="_blank" class="michraz-link">${r.id}</a></td>
+            <td style="font-weight:600">${r.location || '—'}</td>
+            <td style="font-weight:800;font-size:1rem;color:var(--navy)">${r.units || '—'}</td>
+            <td style="font-size:0.82rem">${r.commerce || '—'}</td>
+            <td>${r.numAreas || '—'}</td>
+            <td>${r.unitsPerArea || '—'}</td>
+            <td style="direction:ltr;text-align:left;font-size:0.82rem">${minPr}</td>
+            <td style="direction:ltr;text-align:left;font-size:0.82rem">${devPr}</td>
+            <td>${bookletCell}</td>
+        </tr>`;
+    }).join('');
+
+    wrap.innerHTML = `<table>
+        <thead><tr>${ths}</tr></thead>
+        <tbody>${trs}</tbody>
+    </table>`;
+}
+
+// =========================================================
+// EXPORT EXCEL
+// =========================================================
+function exportExcel() {
+    if (!allData.length) { toast('אין נתונים לייצוא'); return; }
+
+    const wb = XLSX.utils.book_new();
+    const active = allData.filter(isActive);
+    const closed = allData.filter(r => !isActive(r));
+
+    function makeSheet(arr, title) {
+        const rows = [
+            [title],
+            ['מועד אחרון להגשה','יעוד','מספר מכרז','מספר יח"ד','שטח מסחר תעסוקה','מיקום','מספר מתחמים','מספר יחידות במתחם','מחיר מינימום','מחיר פיתוח','הערות'],
+            ...arr.map(r => [r.deadline, r.purpose, r.id, r.units, r.commerce, r.location, r.numAreas, r.unitsPerArea, r.minPrice, r.devPrice, r.notes])
+        ];
+        const ws = XLSX.utils.aoa_to_sheet(rows);
+        ws['!cols'] = [14,22,14,10,18,16,12,20,15,15,20].map(w => ({ wch: w }));
+        return ws;
+    }
+
+    XLSX.utils.book_append_sheet(wb, makeSheet(active, 'מכרזים פתוחים'), 'מכרזים פעילים');
+    if (closed.length) XLSX.utils.book_append_sheet(wb, makeSheet(closed, 'תוצאות מכרזים'), 'תוצאות מכרז');
+
+    const date = new Date().toLocaleDateString('he-IL').replace(/\//g,'_');
+    XLSX.writeFile(wb, `מכרזי_רמי_${date}.xlsx`);
+    toast('האקסל הורד בהצלחה! ✓', 'success');
+}
+
+// =========================================================
+// AUTO REFRESH
+// =========================================================
+function toggleAutoRefresh() {
+    const btn = document.getElementById('autoBtn');
+    if (autoInterval) {
+        clearInterval(autoInterval);
+        autoInterval = null;
+        btn.textContent = '⏱️ עדכון אוטו: כבוי';
+        toast('עדכון אוטומטי כובה');
+    } else {
+        autoInterval = setInterval(() => fetchFromAPI(), 5 * 60 * 1000); // 5 min
+        btn.textContent = '⏱️ עדכון אוטו: כל 5 דק\'';
+        btn.style.background = '#d1fae5';
+        btn.style.color = 'var(--green)';
+        toast('עדכון אוטומטי פעיל — כל 5 דקות', 'success');
+        fetchFromAPI();
+    }
+}
+
+// =========================================================
+// HELPERS
+// =========================================================
+function setTab(tab, el) {
+    currentTab = tab;
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    applyFilters();
+}
+
+function setSort(col) {
+    if (sortCol === col) sortAsc = !sortAsc;
+    else { sortCol = col; sortAsc = true; }
+    applyFilters();
+}
+
+function clearFilters() {
+    document.getElementById('fCity').value = '';
+    document.getElementById('fBooklet').value = '';
+    document.getElementById('fUrgency').value = '';
+    document.getElementById('fMinUnits').value = '';
+    document.getElementById('fSearch').value = '';
+    applyFilters();
+}
+
+function parseDate(str) {
+    if (!str) return null;
+    if (str instanceof Date) return str;
+    const p = str.split(/[\/\-\.]/);
+    if (p.length === 3) {
+        const d = parseInt(p[0]), m = parseInt(p[1]) - 1;
+        const y = parseInt(p[2]); const yr = y < 100 ? 2000 + y : y;
+        return new Date(yr, m, d);
+    }
+    return new Date(str);
+}
+
+function daysLeft(str) {
+    const d = parseDate(str);
+    if (!d || isNaN(d)) return null;
+    return Math.ceil((d - today) / 86400000);
+}
+
+function isActive(r) {
+    const d = parseDate(r.deadline);
+    if (!d) return true;
+    return d >= today;
+}
+
+function setApiStatus(type, msg) {
+    const dot = document.getElementById('apiDot');
+    dot.className = 'dot dot-' + (type === 'loading' ? 'loading' : type === 'ok' ? 'ok' : type === 'err' ? 'err' : 'idle');
+    document.getElementById('apiStatusText').textContent = msg;
+}
+
+function toast(msg, type = '') {
+    const wrap = document.getElementById('toasts');
+    const div = document.createElement('div');
+    div.className = 'toast ' + type;
+    div.textContent = msg;
+    wrap.appendChild(div);
+    setTimeout(() => div.remove(), 4000);
+}
+</script>
+</body>
+</html>
